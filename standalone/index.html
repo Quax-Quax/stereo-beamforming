@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ステレオマイク指向性強化 - ビームフォーミング</title>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border-color: #e0e0e0;
+            --accent-blue: #2563eb;
+            --accent-blue-hover: #1d4ed8;
+            --accent-blue-light: #dbeafe;
+            --meter-green: #10b981;
+            --button-bg: #ffffff;
+            --button-border: #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #0f172a;
+                --bg-secondary: #1e293b;
+                --text-primary: #f1f5f9;
+                --text-secondary: #94a3b8;
+                --border-color: #334155;
+                --accent-blue: #3b82f6;
+                --accent-blue-hover: #2563eb;
+                --accent-blue-light: #1e3a8a;
+                --meter-green: #10b981;
+                --button-bg: #1e293b;
+                --button-border: #334155;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-secondary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ボタン群 */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+
+        button {
+            padding: 12px 16px;
+            border: 1px solid var(--button-border);
+            background: var(--button-bg);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+        }
+
+        button:hover {
+            border-color: var(--accent-blue);
+            background: var(--accent-blue-light);
+        }
+
+        button.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .control-button {
+            padding: 12px 20px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .control-button:hover {
+            background: var(--accent-blue-hover);
+        }
+
+        .control-button:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .control-button.stop {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .control-button.stop:hover {
+            background: var(--border-color);
+        }
+
+        /* スライダー */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+
+        .slider-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            min-width: 100px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-color);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--button-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        select:hover {
+            border-color: var(--accent-blue);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* ステータス表示 */
+        .status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .status-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .status-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            margin-right: 8px;
+        }
+
+        .status-indicator.active {
+            background: var(--meter-green);
+        }
+
+        /* メーター */
+        .meter-container {
+            margin-bottom: 12px;
+        }
+
+        .meter-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .meter-bar {
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: var(--meter-green);
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        /* 情報パネル */
+        .info-box {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-blue);
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 15px;
+        }
+
+        .info-box h4 {
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.6;
+        }
+
+        .info-box p {
+            line-height: 1.6;
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .error {
+            background: var(--bg-secondary);
+            border-left: 3px solid #ef4444;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #ef4444;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ ステレオマイク指向性強化</h1>
+        <p class="subtitle">ビームフォーミングで周囲の音声を抑制</p>
+
+        <!-- ステータス -->
+        <div class="section">
+            <div class="status">
+                <span class="status-label">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    状態
+                </span>
+                <span class="status-value" id="statusText">待機中</span>
+            </div>
+            <div id="errorBox" class="error" style="display: none;"></div>
+        </div>
+
+        <!-- マイク制御 -->
+        <div class="section">
+            <div class="section-title">📱 マイク制御</div>
+            <button class="control-button" id="startBtn">マイクを開始</button>
+            <button class="control-button stop" id="stopBtn" disabled style="margin-top: 10px;">停止</button>
+        </div>
+
+        <!-- 出力デバイス選択 -->
+        <div class="section">
+            <div class="section-title">🔊 出力デバイス</div>
+            <div class="slider-container">
+                <label class="slider-label">デバイス</label>
+                <select id="outputDeviceSelect"></select>
+            </div>
+            <div id="sinkIdStatus" style="font-size: 12px; color: #999; margin-top: 8px;"></div>
+        </div>
+
+        <!-- マイク間隔調整 -->
+        <div class="section">
+            <div class="section-title">⚙️ マイク間隔（初期値: 20cm）</div>
+            <div class="slider-container">
+                <label class="slider-label">間隔 (cm)</label>
+                <input type="range" id="micDistanceSlider" min="5" max="50" value="20" step="1">
+                <span class="slider-value" id="micDistanceValue">20 cm</span>
+            </div>
+            <div class="info-box">
+                <h4>💡 ヒント</h4>
+                <ul>
+                    <li>PCのマイク間隔に合わせて調整してください</li>
+                    <li>値を大きくするほど指向性が強くなります</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 処理方法選択 -->
+        <div class="section">
+            <div class="section-title">🎯 処理方法を選択</div>
+            <div class="button-group">
+                <button id="methodPassthrough" class="method-btn active">
+                    パススルー<br><small style="font-size: 11px; opacity: 0.7;">比較用</small>
+                </button>
+                <button id="methodMidside" class="method-btn">
+                    Mid/Side<br><small style="font-size: 11px; opacity: 0.7;">Side減衰</small>
+                </button>
+                <button id="methodParacardioid" class="method-btn">
+                    パラカーディオイド<br><small style="font-size: 11px; opacity: 0.7;">指向性パターン</small>
+                </button>
+                <button id="methodTDOA" class="method-btn">
+                    TDOA<br><small style="font-size: 11px; opacity: 0.7;">時間差遅延</small>
+                </button>
+                <button id="methodFrequency" class="method-btn" style="grid-column: 1 / 2;">
+                    周波数依存<br><small style="font-size: 11px; opacity: 0.7;">帯域別処理</small>
+                </button>
+            </div>
+        </div>
+
+        <!-- パラメータ調整 -->
+        <div class="section" id="parameterSection" style="display: none;">
+            <div class="section-title">🔧 パラメータ調整</div>
+            <div id="parameterControls"></div>
+        </div>
+
+        <!-- 入出力メーター -->
+        <div class="section">
+            <div class="section-title">📊 レベルメーター</div>
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>入力レベル</span>
+                    <span id="inputLevel">0 dB</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" id="inputMeter"></div>
+                </div>
+            </div>
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>出力レベル</span>
+                    <span id="outputLevel">0 dB</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" id="outputMeter"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 説明 -->
+        <div class="section">
+            <div class="section-title">ℹ️ 処理方法の説明</div>
+            <div class="info-box">
+                <h4>Mid/Side</h4>
+                <p>L+R（中央）と L-R（側面）に分解し、側面成分を減衰させることで指向性を強化します。</p>
+                
+                <h4>パラカーディオイド</h4>
+                <p>複数の指向性パターン（全指向性・双指向性）を合成し、正面方向の感度を上げます。</p>
+                
+                <h4>TDOA</h4>
+                <p>チャンネル間の時間差を利用し、特定の方向から来た音を強調します。</p>
+                
+                <h4>周波数依存</h4>
+                <p>低周波は全指向性、高周波はカーディオイドを適用し、帯域ごとに最適な処理を行います。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * AudioWorkletプロセッサコード（埋め込み版）
+         */
+        const processorCode = `
+class BeamformingProcessor extends AudioWorkletProcessor {
+  constructor(options) {
+    super();
+    this.micDistance = 0.2;
+    this.sampleRate = sampleRate;
+    this.currentMethod = 'passthrough';
+    this.midSideStrength = 0.7;
+    this.paracardioidStrength = 0.8;
+    this.tdoaDelay = 0;
+    this.frequencyBands = 4;
+    this.prevLeftSample = 0;
+    this.prevRightSample = 0;
+    
+    this.port.onmessage = (event) => {
+      const { command, value } = event.data;
+      if (command === 'setMethod') {
+        this.currentMethod = value;
+      } else if (command === 'setMicDistance') {
+        this.micDistance = value;
+        this.updateTDOADelay();
+      } else if (command === 'setMidSideStrength') {
+        this.midSideStrength = value;
+      } else if (command === 'setParacardioidStrength') {
+        this.paracardioidStrength = value;
+      }
+    };
+    this.updateTDOADelay();
+  }
+  
+  updateTDOADelay() {
+    const speedOfSound = 343;
+    const delayTime = this.micDistance / speedOfSound;
+    this.tdoaDelay = Math.round(delayTime * this.sampleRate);
+  }
+  
+  processMidSide(left, right) {
+    const mid = (left + right) / 2;
+    const side = (left - right) / 2;
+    const reducedSide = side * (1 - this.midSideStrength);
+    const outLeft = (mid + reducedSide);
+    const outRight = (mid - reducedSide);
+    return [outLeft, outRight];
+  }
+  
+  processParacardioid(left, right) {
+    const omni = (left + right) / 2;
+    const figure8 = (left - right) / 2;
+    const cardioid = omni + figure8 * this.paracardioidStrength;
+    return [cardioid, cardioid];
+  }
+  
+  processTDOA(left, right) {
+    let delayedRight;
+    if (this.tdoaDelay > 0) {
+      delayedRight = this.prevRightSample;
+    } else {
+      delayedRight = right;
+    }
+    const output = (left + delayedRight) / 2;
+    this.prevLeftSample = left;
+    this.prevRightSample = right;
+    return [output, output];
+  }
+  
+  processFrequencyDependent(left, right) {
+    const midSideOut = this.processMidSide(left, right);
+    const paraOut = this.processParacardioid(left, right);
+    const weight = 0.4;
+    const outLeft = midSideOut[0] * (1 - weight) + paraOut[0] * weight;
+    const outRight = midSideOut[1] * (1 - weight) + paraOut[1] * weight;
+    return [outLeft, outRight];
+  }
+  
+  process(inputs, outputs, parameters) {
+    const input = inputs[0];
+    const output = outputs[0];
+    
+    // ステレオ入力チャンネル取得
+    const leftChannel = input[0];
+    const rightChannel = input.length > 1 ? input[1] : input[0];
+    
+    // ステレオ出力チャンネル
+    const outLeftChannel = output[0];
+    const outRightChannel = output.length > 1 ? output[1] : output[0];
+    
+    if (!leftChannel || !rightChannel || !outLeftChannel) {
+      return true;
+    }
+    
+    for (let i = 0; i < leftChannel.length; i++) {
+      let processed;
+      switch (this.currentMethod) {
+        case 'midside':
+          processed = this.processMidSide(leftChannel[i], rightChannel[i]);
+          break;
+        case 'paracardioid':
+          processed = this.processParacardioid(leftChannel[i], rightChannel[i]);
+          break;
+        case 'tdoa':
+          processed = this.processTDOA(leftChannel[i], rightChannel[i]);
+          break;
+        case 'frequency':
+          processed = this.processFrequencyDependent(leftChannel[i], rightChannel[i]);
+          break;
+        case 'passthrough':
+        default:
+          processed = [(leftChannel[i] + rightChannel[i]) / 2, 0];
+          break;
+      }
+      // モノラル出力を両チャンネルに出力
+      const outputSample = Math.max(-1, Math.min(1, processed[0]));
+      outLeftChannel[i] = outputSample;
+      outRightChannel[i] = outputSample;
+    }
+    return true;
+  }
+}
+registerProcessor('beamforming-processor', BeamformingProcessor);
+        `;
+
+        /**
+         * ステレオマイク指向性強化アプリケーション
+         */
+
+        let audioContext = null;
+        let mediaStream = null;
+        let processor = null;
+        let sourceNode = null;
+        let analyzerInput = null;
+        let analyzerOutput = null;
+
+        const UI = {
+            startBtn: document.getElementById('startBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            statusText: document.getElementById('statusText'),
+            statusIndicator: document.getElementById('statusIndicator'),
+            errorBox: document.getElementById('errorBox'),
+            micDistanceSlider: document.getElementById('micDistanceSlider'),
+            micDistanceValue: document.getElementById('micDistanceValue'),
+            methodButtons: document.querySelectorAll('.method-btn'),
+            inputMeter: document.getElementById('inputMeter'),
+            outputMeter: document.getElementById('outputMeter'),
+            inputLevel: document.getElementById('inputLevel'),
+            outputLevel: document.getElementById('outputLevel'),
+            parameterSection: document.getElementById('parameterSection'),
+            parameterControls: document.getElementById('parameterControls'),
+            outputDeviceSelect: document.getElementById('outputDeviceSelect'),
+            sinkIdStatus: document.getElementById('sinkIdStatus')
+        };
+
+        // イベントリスナー
+        UI.startBtn.addEventListener('click', startMicrophone);
+        UI.stopBtn.addEventListener('click', stopMicrophone);
+        UI.micDistanceSlider.addEventListener('input', updateMicDistance);
+        UI.methodButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => selectMethod(e.target.closest('button')));
+        });
+        UI.outputDeviceSelect.addEventListener('change', changeOutputDevice);
+
+        function updateStatus(text, isActive = false) {
+            UI.statusText.textContent = text;
+            UI.statusIndicator.classList.toggle('active', isActive);
+        }
+
+        function showError(message) {
+            UI.errorBox.textContent = message;
+            UI.errorBox.style.display = 'block';
+            setTimeout(() => {
+                UI.errorBox.style.display = 'none';
+            }, 5000);
+        }
+
+        async function startMicrophone() {
+            console.log('startMicrophone called');
+            try {
+                updateStatus('マイクへのアクセスを要求中...', false);
+                console.log('updateStatus done');
+
+                // AudioContext初期化
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('AudioContext created');
+                }
+
+                // マイク取得（ステレオ）
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 2,
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+                console.log('getUserMedia success');
+
+                // AudioWorklet登録（UTF-8対応のBase64エンコーディング）
+                const encoder = new TextEncoder();
+                const encoded = encoder.encode(processorCode);
+                const binaryString = String.fromCharCode(...encoded);
+                const base64 = btoa(binaryString);
+                const dataUrl = `data:application/javascript;base64,${base64}`;
+                console.log('AudioWorklet loading...');
+                await audioContext.audioWorklet.addModule(dataUrl);
+                console.log('AudioWorklet loaded');
+
+                // ソースノード作成
+                sourceNode = audioContext.createMediaStreamSource(mediaStream);
+
+                // AudioWorkletプロセッサ作成
+                processor = new AudioWorkletNode(audioContext, 'beamforming-processor');
+                processor.port.onmessage = (event) => {
+                    // プロセッサからのメッセージを処理（必要に応じて）
+                };
+
+                // アナライザー作成（メーター用）
+                analyzerInput = audioContext.createAnalyser();
+                analyzerInput.fftSize = 2048;
+                analyzerOutput = audioContext.createAnalyser();
+                analyzerOutput.fftSize = 2048;
+
+                // ノード接続
+                sourceNode.connect(analyzerInput);
+                sourceNode.connect(processor);
+                processor.connect(analyzerOutput);
+                analyzerOutput.connect(audioContext.destination);
+                console.log('Nodes connected');
+
+                // 出力デバイスリストを更新
+                try {
+                    await enumerateOutputDevices();
+                    console.log('enumerateOutputDevices completed');
+                } catch (devError) {
+                    console.error('Device enumeration error:', devError);
+                    UI.sinkIdStatus.textContent = '⚠️ デバイス列挙失敗（HTTPS/localhost が必要）';
+                }
+
+                updateStatus('マイク処理中...', true);
+                UI.startBtn.disabled = true;
+                UI.stopBtn.disabled = false;
+                UI.micDistanceSlider.disabled = false;
+
+                // メーター更新ループ
+                updateMeters();
+                console.log('startMicrophone completed successfully');
+
+            } catch (error) {
+                console.error('マイク起動エラー:', error);
+                console.error('Error name:', error.name);
+                console.error('Error message:', error.message);
+                updateStatus('エラー', false);
+                showError(`エラー: ${error.message}`);
+            }
+        }
+
+        function stopMicrophone() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            sourceNode = null;
+            processor = null;
+
+            updateStatus('停止', false);
+            UI.startBtn.disabled = false;
+            UI.stopBtn.disabled = true;
+            UI.micDistanceSlider.disabled = true;
+            UI.inputMeter.style.width = '0%';
+            UI.outputMeter.style.width = '0%';
+        }
+
+        function updateMicDistance() {
+            const value = parseInt(UI.micDistanceSlider.value);
+            const meters = value / 100; // cmをメートルに変換
+            UI.micDistanceValue.textContent = `${value} cm`;
+
+            if (processor) {
+                processor.port.postMessage({
+                    command: 'setMicDistance',
+                    value: meters
+                });
+            }
+        }
+
+        function selectMethod(btn) {
+            // 前のアクティブボタンを非アクティブにする
+            UI.methodButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const methodMap = {
+                'methodPassthrough': 'passthrough',
+                'methodMidside': 'midside',
+                'methodParacardioid': 'paracardioid',
+                'methodTDOA': 'tdoa',
+                'methodFrequency': 'frequency'
+            };
+
+            const method = methodMap[btn.id];
+
+            if (processor) {
+                processor.port.postMessage({
+                    command: 'setMethod',
+                    value: method
+                });
+            }
+
+            updateParameterControls(method);
+        }
+
+        function updateParameterControls(method) {
+            const controls = UI.parameterControls;
+            controls.innerHTML = '';
+
+            const methodParams = {
+                'midside': [
+                    { name: 'midSideStrength', label: 'Side減衰強度', min: 0, max: 1, step: 0.1, default: 0.7 }
+                ],
+                'paracardioid': [
+                    { name: 'paracardioidStrength', label: '指向性強度', min: 0, max: 1, step: 0.1, default: 0.8 }
+                ],
+                'tdoa': [
+                    { name: 'tdoaDelay', label: '遅延調整', min: 0, max: 1, step: 0.1, default: 0.5 }
+                ],
+                'frequency': [
+                    { name: 'frequencyBands', label: 'バンド数', min: 2, max: 8, step: 1, default: 4 }
+                ]
+            };
+
+            const params = methodParams[method] || [];
+
+            if (params.length > 0) {
+                UI.parameterSection.style.display = 'block';
+                params.forEach(param => {
+                    const container = document.createElement('div');
+                    container.className = 'slider-container';
+                    container.innerHTML = `
+                        <label class="slider-label">${param.label}</label>
+                        <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.default}" class="param-slider" data-param="${param.name}">
+                        <span class="slider-value">${param.default.toFixed(1)}</span>
+                    `;
+                    controls.appendChild(container);
+
+                    const slider = container.querySelector('.param-slider');
+                    const value = container.querySelector('.slider-value');
+
+                    slider.addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        value.textContent = val.toFixed(1);
+
+                        if (processor) {
+                            processor.port.postMessage({
+                                command: `set${param.name.charAt(0).toUpperCase() + param.name.slice(1)}`,
+                                value: val
+                            });
+                        }
+                    });
+                });
+            } else {
+                UI.parameterSection.style.display = 'none';
+            }
+        }
+
+        async function enumerateOutputDevices() {
+            console.log("enumerateOutputDevices start");
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                    console.error('navigator.mediaDevices は利用不可');
+                    UI.sinkIdStatus.textContent = '⚠️ 出力デバイス選択は HTTPS/localhost でのみ利用可能';
+                    return;
+                }
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                console.log('Devices:', devices);
+                const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+                console.log('Audio outputs:', audioOutputs);
+                UI.outputDeviceSelect.innerHTML = '<option value="">デフォルト</option>';
+                audioOutputs.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `Audio Output ${device.deviceId.substring(0, 5)}...`;
+                    UI.outputDeviceSelect.appendChild(option);
+                });
+
+                if (audioOutputs.length > 0) {
+                    UI.sinkIdStatus.textContent = `✓ ${audioOutputs.length} 個のデバイスが利用可能`;
+                } else {
+                    UI.sinkIdStatus.textContent = 'ℹ️ 出力デバイスが見つかりません';
+                }
+            } catch (error) {
+                console.error('Error enumerating devices:', error);
+                console.error('Error name:', error.name);
+                console.error('Error message:', error.message);
+                
+                // file:// プロトコルでの SecurityError
+                if (error.name === 'SecurityError') {
+                    UI.sinkIdStatus.textContent = '⚠️ HTTPS または localhost でご利用ください';
+                } else {
+                    UI.sinkIdStatus.textContent = `エラー: ${error.message}`;
+                }
+            }
+        }
+
+        async function changeOutputDevice() {
+            if (!audioContext) return;
+
+            const deviceId = UI.outputDeviceSelect.value;
+            
+            try {
+                if (typeof audioContext.setSinkId !== 'function') {
+                    UI.sinkIdStatus.textContent = '⚠️ setSinkId() がサポートされていません（HTTPS または localhost が必要です）';
+                    return;
+                }
+
+                await audioContext.setSinkId(deviceId);
+                const displayName = deviceId === '' ? 'デフォルト' : UI.outputDeviceSelect.options[UI.outputDeviceSelect.selectedIndex].text;
+                UI.sinkIdStatus.textContent = `✓ 出力デバイス: ${displayName}`;
+            } catch (error) {
+                console.error('Error setting sink ID:', error);
+                UI.sinkIdStatus.textContent = `エラー: ${error.message}`;
+                UI.outputDeviceSelect.value = '';
+            }
+        }
+
+        function updateMeters() {
+            if (!analyzerInput || !analyzerOutput) {
+                requestAnimationFrame(updateMeters);
+                return;
+            }
+
+            // 入力レベル計算
+            const inputData = new Uint8Array(analyzerInput.frequencyBinCount);
+            analyzerInput.getByteFrequencyData(inputData);
+            const inputAvg = inputData.reduce((a, b) => a + b) / inputData.length;
+            const inputPercent = (inputAvg / 255) * 100;
+            const inputDB = 20 * Math.log10(inputAvg / 255 || 0.001);
+
+            UI.inputMeter.style.width = Math.min(inputPercent, 100) + '%';
+            UI.inputLevel.textContent = inputDB.toFixed(1) + ' dB';
+
+            // 出力レベル計算
+            const outputData = new Uint8Array(analyzerOutput.frequencyBinCount);
+            analyzerOutput.getByteFrequencyData(outputData);
+            const outputAvg = outputData.reduce((a, b) => a + b) / outputData.length;
+            const outputPercent = (outputAvg / 255) * 100;
+            const outputDB = 20 * Math.log10(outputAvg / 255 || 0.001);
+
+            UI.outputMeter.style.width = Math.min(outputPercent, 100) + '%';
+            UI.outputLevel.textContent = outputDB.toFixed(1) + ' dB';
+
+            requestAnimationFrame(updateMeters);
+        }
+
+        // 初期化
+        updateStatus('待機中', false);
+        UI.micDistanceSlider.disabled = true;
+    </script>
+</body>
+</html>

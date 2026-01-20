@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ステレオマイク指向性強化 - ビームフォーミング</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ ステレオマイク指向性強化</h1>
+        <p class="subtitle">ビームフォーミングで周囲の音声を抑制</p>
+
+        <!-- ステータス -->
+        <div class="section">
+            <div class="status">
+                <span class="status-label">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    状態
+                </span>
+                <span class="status-value" id="statusText">待機中</span>
+            </div>
+            <div id="errorBox" class="error" style="display: none;"></div>
+        </div>
+
+        <!-- マイク制御 -->
+        <div class="section">
+            <div class="section-title">📱 マイク制御</div>
+            <button class="control-button" id="startBtn">マイクを開始</button>
+            <button class="control-button stop" id="stopBtn" disabled style="margin-top: 10px;">停止</button>
+        </div>
+
+        <!-- 出力デバイス選択 -->
+        <div class="section">
+            <div class="section-title">🔊 出力デバイス</div>
+            <div class="slider-container">
+                <label class="slider-label">デバイス</label>
+                <select id="outputDeviceSelect"></select>
+            </div>
+            <div id="sinkIdStatus" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;"></div>
+        </div>
+
+        <!-- マイク間隔調整 -->
+        <div class="section">
+            <div class="section-title">⚙️ マイク間隔（初期値: 20cm）</div>
+            <div class="slider-container">
+                <label class="slider-label">間隔 (cm)</label>
+                <input type="range" id="micDistanceSlider" min="5" max="50" value="20" step="1">
+                <span class="slider-value" id="micDistanceValue">20 cm</span>
+            </div>
+            <div class="info-box">
+                <h4>💡 ヒント</h4>
+                <ul>
+                    <li>PCのマイク間隔に合わせて調整してください</li>
+                    <li>値を大きくするほど指向性が強くなります</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 処理方法選択 -->
+        <div class="section">
+            <div class="section-title">🎯 処理方法を選択</div>
+            <div class="button-group">
+                <button id="methodPassthrough" class="method-btn active">
+                    パススルー<br><small style="font-size: 11px; opacity: 0.7;">比較用</small>
+                </button>
+                <button id="methodMidside" class="method-btn">
+                    Mid/Side<br><small style="font-size: 11px; opacity: 0.7;">Side減衰</small>
+                </button>
+                <button id="methodParacardioid" class="method-btn">
+                    パラカーディオイド<br><small style="font-size: 11px; opacity: 0.7;">指向性パターン</small>
+                </button>
+                <button id="methodTDOA" class="method-btn">
+                    TDOA<br><small style="font-size: 11px; opacity: 0.7;">時間差遅延</small>
+                </button>
+                <button id="methodFrequency" class="method-btn" style="grid-column: 1 / 2;">
+                    周波数依存<br><small style="font-size: 11px; opacity: 0.7;">帯域別処理</small>
+                </button>
+            </div>
+        </div>
+
+        <!-- パラメータ調整 -->
+        <div class="section" id="parameterSection" style="display: none;">
+            <div class="section-title">🔧 パラメータ調整</div>
+            <div id="parameterControls"></div>
+        </div>
+
+        <!-- 入出力メーター -->
+        <div class="section">
+            <div class="section-title">📊 レベルメーター</div>
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>入力レベル</span>
+                    <span id="inputLevel">0 dB</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" id="inputMeter"></div>
+                </div>
+            </div>
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>出力レベル</span>
+                    <span id="outputLevel">0 dB</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" id="outputMeter"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 説明 -->
+        <div class="section">
+            <div class="section-title">ℹ️ 処理方法の説明</div>
+            <div class="info-box">
+                <h4>Mid/Side</h4>
+                <p>L+R（中央）と L-R（側面）に分解し、側面成分を減衰させることで指向性を強化します。</p>
+                
+                <h4>パラカーディオイド</h4>
+                <p>複数の指向性パターン（全指向性・双指向性）を合成し、正面方向の感度を上げます。</p>
+                
+                <h4>TDOA</h4>
+                <p>チャンネル間の時間差を利用し、特定の方向から来た音を強調します。</p>
+                
+                <h4>周波数依存</h4>
+                <p>低周波は全指向性、高周波はカーディオイドを適用し、帯域ごとに最適な処理を行います。</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

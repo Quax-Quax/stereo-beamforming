@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ビームフォーミング - クイックテスト</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        h1 { color: #667eea; }
+        button { padding: 10px 20px; margin: 5px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:disabled { background: #ccc; }
+        .status { padding: 10px; background: #f0f4ff; border-radius: 4px; margin: 10px 0; }
+        .slider { width: 100%; max-width: 400px; }
+    </style>
+</head>
+<body>
+    <h1>🎙️ ステレオマイク指向性強化 - クイックテスト</h1>
+    
+    <div class="status" id="status">状態: 待機中</div>
+    
+    <button id="startBtn">START - マイク開始</button>
+    <button id="stopBtn" disabled>STOP - 停止</button>
+    
+    <h2>処理方法</h2>
+    <button id="m1">Mid/Side</button>
+    <button id="m2">Paracardioid</button>
+    <button id="m3">TDOA</button>
+    <button id="m4">Frequency</button>
+    
+    <h2>マイク間隔 (cm)</h2>
+    <input type="range" min="5" max="50" value="20" id="distance" class="slider">
+    <span id="distValue">20</span> cm
+
+    <script>
+        let audioContext = null;
+        let processor = null;
+        let mediaStream = null;
+
+        document.getElementById('startBtn').onclick = async () => {
+            try {
+                audioContext = new AudioContext();
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 2, echoCancellation: false } });
+                
+                await audioContext.audioWorklet.addModule('beamforming-processor.js');
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                processor = new AudioWorkletNode(audioContext, 'beamforming-processor');
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                document.getElementById('status').textContent = '状態: マイク処理中...';
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+            } catch (e) {
+                alert('エラー: ' + e.message);
+            }
+        };
+
+        document.getElementById('stopBtn').onclick = () => {
+            mediaStream?.getTracks().forEach(t => t.stop());
+            audioContext?.close();
+            document.getElementById('status').textContent = '状態: 停止';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        };
+
+        document.getElementById('m1').onclick = () => processor?.port.postMessage({ command: 'setMethod', value: 'midside' });
+        document.getElementById('m2').onclick = () => processor?.port.postMessage({ command: 'setMethod', value: 'paracardioid' });
+        document.getElementById('m3').onclick = () => processor?.port.postMessage({ command: 'setMethod', value: 'tdoa' });
+        document.getElementById('m4').onclick = () => processor?.port.postMessage({ command: 'setMethod', value: 'frequency' });
+
+        document.getElementById('distance').oninput = (e) => {
+            const cm = e.target.value;
+            document.getElementById('distValue').textContent = cm;
+            processor?.port.postMessage({ command: 'setMicDistance', value: cm / 100 });
+        };
+    </script>
+</body>
+</html>

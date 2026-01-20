@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ステレオマイク指向性強化 - ビームフォーミング</title>
+    <title>ステレオマイクの指向性強化</title>
     <link rel="stylesheet" href="main.css">
 </head>
 <body>
     <div class="container">
-        <h1>🎙️ ステレオマイク指向性強化</h1>
-        <p class="subtitle">ビームフォーミングで周囲の音声を抑制</p>
+        <h1>ステレオマイクの指向性強化</h1>
+        <p class="subtitle">複数のビームフォーミング手法を比較できます</p>
 
         <!-- ステータス -->
         <div class="section">
@@ -25,14 +25,14 @@
 
         <!-- マイク制御 -->
         <div class="section">
-            <div class="section-title">📱 マイク制御</div>
+            <div class="section-title">マイク制御</div>
             <button class="control-button" id="startBtn">マイクを開始</button>
             <button class="control-button stop" id="stopBtn" disabled style="margin-top: 10px;">停止</button>
         </div>
 
         <!-- 出力デバイス選択 -->
         <div class="section">
-            <div class="section-title">🔊 出力デバイス</div>
+            <div class="section-title">出力デバイス</div>
             <div class="slider-container">
                 <label class="slider-label">デバイス</label>
                 <select id="outputDeviceSelect"></select>
@@ -42,14 +42,14 @@
 
         <!-- マイク間隔調整 -->
         <div class="section">
-            <div class="section-title">⚙️ マイク間隔（初期値: 20cm）</div>
+            <div class="section-title">マイク間隔（初期値: 20cm）</div>
             <div class="slider-container">
                 <label class="slider-label">間隔 (cm)</label>
                 <input type="range" id="micDistanceSlider" min="5" max="50" value="20" step="1">
                 <span class="slider-value" id="micDistanceValue">20 cm</span>
             </div>
             <div class="info-box">
-                <h4>💡 ヒント</h4>
+                <h4>ヒント</h4>
                 <ul>
                     <li>PCのマイク間隔に合わせて調整してください</li>
                     <li>値を大きくするほど指向性が強くなります</li>
@@ -59,7 +59,7 @@
 
         <!-- 処理方法選択 -->
         <div class="section">
-            <div class="section-title">🎯 処理方法を選択</div>
+            <div class="section-title">処理方法を選択</div>
             <div class="button-group">
                 <button id="methodPassthrough" class="method-btn active">
                     パススルー<br><small style="font-size: 11px; opacity: 0.7;">比較用</small>
@@ -87,7 +87,7 @@
 
         <!-- 入出力メーター -->
         <div class="section">
-            <div class="section-title">📊 レベルメーター</div>
+            <div class="section-title">レベルメーター</div>
             <div class="meter-container">
                 <div class="meter-label">
                     <span>入力L</span>
@@ -128,7 +128,7 @@
 
         <!-- 説明 -->
         <div class="section">
-            <div class="section-title">ℹ️ 処理方法の説明</div>
+            <div class="section-title">処理方法の説明</div>
             <div class="info-box">
                 <h4>Mid/Side</h4>
                 <p>L+R（中央）と L-R（側面）に分解し、側面成分を減衰させることで指向性を強化します。</p>

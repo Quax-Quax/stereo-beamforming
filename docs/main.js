@@ -7,8 +7,12 @@ let audioContext = null;
 let mediaStream = null;
 let processor = null;
 let sourceNode = null;
-let analyzerInput = null;
-let analyzerOutput = null;
+let splitterInput = null;
+let splitterOutput = null;
+let analyzerInputL = null;
+let analyzerInputR = null;
+let analyzerOutputL = null;
+let analyzerOutputR = null;
 
 const UI = {
     startBtn: document.getElementById('startBtn'),
@@ -19,10 +23,14 @@ const UI = {
     micDistanceSlider: document.getElementById('micDistanceSlider'),
     micDistanceValue: document.getElementById('micDistanceValue'),
     methodButtons: document.querySelectorAll('.method-btn'),
-    inputMeter: document.getElementById('inputMeter'),
-    outputMeter: document.getElementById('outputMeter'),
-    inputLevel: document.getElementById('inputLevel'),
-    outputLevel: document.getElementById('outputLevel'),
+    inputLMeter: document.getElementById('inputLMeter'),
+    inputRMeter: document.getElementById('inputRMeter'),
+    outputLMeter: document.getElementById('outputLMeter'),
+    outputRMeter: document.getElementById('outputRMeter'),
+    inputLLevel: document.getElementById('inputLLevel'),
+    inputRLevel: document.getElementById('inputRLevel'),
+    outputLLevel: document.getElementById('outputLLevel'),
+    outputRLevel: document.getElementById('outputRLevel'),
     parameterSection: document.getElementById('parameterSection'),
     parameterControls: document.getElementById('parameterControls'),
     outputDeviceSelect: document.getElementById('outputDeviceSelect'),
@@ -88,17 +96,31 @@ async function startMicrophone() {
             // プロセッサからのメッセージを処理（必要に応じて）
         };
 
-        // アナライザー作成（メーター用）
-        analyzerInput = audioContext.createAnalyser();
-        analyzerInput.fftSize = 2048;
-        analyzerOutput = audioContext.createAnalyser();
-        analyzerOutput.fftSize = 2048;
+        // ステレオスプリッター作成（入力用）
+        splitterInput = audioContext.createChannelSplitter(2);
+        
+        // アナライザー作成（チャンネル別）
+        analyzerInputL = audioContext.createAnalyser();
+        analyzerInputL.fftSize = 2048;
+        analyzerInputR = audioContext.createAnalyser();
+        analyzerInputR.fftSize = 2048;
+        analyzerOutputL = audioContext.createAnalyser();
+        analyzerOutputL.fftSize = 2048;
+        analyzerOutputR = audioContext.createAnalyser();
+        analyzerOutputR.fftSize = 2048;
 
-        // ノード接続
-        sourceNode.connect(analyzerInput);
+        // ノード接続（入力）
+        sourceNode.connect(splitterInput);
+        splitterInput.connect(analyzerInputL, 0);
+        splitterInput.connect(analyzerInputR, 1);
         sourceNode.connect(processor);
-        processor.connect(analyzerOutput);
-        analyzerOutput.connect(audioContext.destination);
+
+        // 出力用スプリッター作成
+        splitterOutput = audioContext.createChannelSplitter(2);
+        processor.connect(splitterOutput);
+        splitterOutput.connect(analyzerOutputL, 0);
+        splitterOutput.connect(analyzerOutputR, 1);
+        processor.connect(audioContext.destination);
         console.log('Nodes connected');
 
         // 出力デバイスリストを更新
@@ -141,13 +163,21 @@ function stopMicrophone() {
 
     sourceNode = null;
     processor = null;
+    splitterInput = null;
+    splitterOutput = null;
+    analyzerInputL = null;
+    analyzerInputR = null;
+    analyzerOutputL = null;
+    analyzerOutputR = null;
 
     updateStatus('停止', false);
     UI.startBtn.disabled = false;
     UI.stopBtn.disabled = true;
     UI.micDistanceSlider.disabled = true;
-    UI.inputMeter.style.width = '0%';
-    UI.outputMeter.style.width = '0%';
+    UI.inputLMeter.style.width = '0%';
+    UI.inputRMeter.style.width = '0%';
+    UI.outputLMeter.style.width = '0%';
+    UI.outputRMeter.style.width = '0%';
 }
 
 function updateMicDistance() {
@@ -303,30 +333,50 @@ async function changeOutputDevice() {
 }
 
 function updateMeters() {
-    if (!analyzerInput || !analyzerOutput) {
+    if (!analyzerInputL || !analyzerInputR || !analyzerOutputL || !analyzerOutputR) {
         requestAnimationFrame(updateMeters);
         return;
     }
 
-    // 入力レベル計算
-    const inputData = new Uint8Array(analyzerInput.frequencyBinCount);
-    analyzerInput.getByteFrequencyData(inputData);
-    const inputAvg = inputData.reduce((a, b) => a + b) / inputData.length;
-    const inputPercent = (inputAvg / 255) * 100;
-    const inputDB = 20 * Math.log10(inputAvg / 255 || 0.001);
+    // 入力Lチャンネル計算
+    const inputLData = new Uint8Array(analyzerInputL.frequencyBinCount);
+    analyzerInputL.getByteFrequencyData(inputLData);
+    const inputLAvg = inputLData.reduce((a, b) => a + b) / inputLData.length;
+    const inputLPercent = (inputLAvg / 255) * 100;
+    const inputLDB = 20 * Math.log10(inputLAvg / 255 || 0.001);
 
-    UI.inputMeter.style.width = Math.min(inputPercent, 100) + '%';
-    UI.inputLevel.textContent = inputDB.toFixed(1) + ' dB';
+    UI.inputLMeter.style.width = Math.min(inputLPercent, 100) + '%';
+    UI.inputLLevel.textContent = inputLDB.toFixed(1) + ' dB';
 
-    // 出力レベル計算
-    const outputData = new Uint8Array(analyzerOutput.frequencyBinCount);
-    analyzerOutput.getByteFrequencyData(outputData);
-    const outputAvg = outputData.reduce((a, b) => a + b) / outputData.length;
-    const outputPercent = (outputAvg / 255) * 100;
-    const outputDB = 20 * Math.log10(outputAvg / 255 || 0.001);
+    // 入力Rチャンネル計算
+    const inputRData = new Uint8Array(analyzerInputR.frequencyBinCount);
+    analyzerInputR.getByteFrequencyData(inputRData);
+    const inputRAvg = inputRData.reduce((a, b) => a + b) / inputRData.length;
+    const inputRPercent = (inputRAvg / 255) * 100;
+    const inputRDB = 20 * Math.log10(inputRAvg / 255 || 0.001);
 
-    UI.outputMeter.style.width = Math.min(outputPercent, 100) + '%';
-    UI.outputLevel.textContent = outputDB.toFixed(1) + ' dB';
+    UI.inputRMeter.style.width = Math.min(inputRPercent, 100) + '%';
+    UI.inputRLevel.textContent = inputRDB.toFixed(1) + ' dB';
+
+    // 出力Lチャンネル計算
+    const outputLData = new Uint8Array(analyzerOutputL.frequencyBinCount);
+    analyzerOutputL.getByteFrequencyData(outputLData);
+    const outputLAvg = outputLData.reduce((a, b) => a + b) / outputLData.length;
+    const outputLPercent = (outputLAvg / 255) * 100;
+    const outputLDB = 20 * Math.log10(outputLAvg / 255 || 0.001);
+
+    UI.outputLMeter.style.width = Math.min(outputLPercent, 100) + '%';
+    UI.outputLLevel.textContent = outputLDB.toFixed(1) + ' dB';
+
+    // 出力Rチャンネル計算
+    const outputRData = new Uint8Array(analyzerOutputR.frequencyBinCount);
+    analyzerOutputR.getByteFrequencyData(outputRData);
+    const outputRAvg = outputRData.reduce((a, b) => a + b) / outputRData.length;
+    const outputRPercent = (outputRAvg / 255) * 100;
+    const outputRDB = 20 * Math.log10(outputRAvg / 255 || 0.001);
+
+    UI.outputRMeter.style.width = Math.min(outputRPercent, 100) + '%';
+    UI.outputRLevel.textContent = outputRDB.toFixed(1) + ' dB';
 
     requestAnimationFrame(updateMeters);
 }

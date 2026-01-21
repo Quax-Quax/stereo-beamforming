@@ -273,6 +273,16 @@ function updateParameterControls(method) {
 
 async function enumerateOutputDevices() {
     console.log("enumerateOutputDevices start");
+    const isWebKit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    
+    if (isWebKit) {
+        // WebKit/Safari - AirPlay対応
+        console.log('WebKit detected, using AirPlay selector');
+        setupAirPlaySelector();
+        return;
+    }
+    
+    // 標準的なsetSinkId方式（Chrome, Firefox等）
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
             console.error('navigator.mediaDevices は利用不可');
@@ -311,10 +321,58 @@ async function enumerateOutputDevices() {
     }
 }
 
+function setupAirPlaySelector() {
+    // AirPlayボタン用のダミーオーディオ要素を作成（WebKit/Safari）
+    const audioElement = document.createElement('audio');
+    audioElement.style.display = 'none';
+    document.body.appendChild(audioElement);
+    
+    // webkitShowPlaybackTargetPicker() で AirPlay ピッカーを表示
+    if (typeof audioElement.webkitShowPlaybackTargetPicker === 'function') {
+        UI.outputDeviceSelect.innerHTML = '';
+        
+        const button = document.createElement('button');
+        button.textContent = 'AirPlayデバイスを選択';
+        button.style.width = '100%';
+        button.style.padding = '10px';
+        button.style.marginTop = '10px';
+        button.className = 'control-button';
+        button.addEventListener('click', () => {
+            audioElement.webkitShowPlaybackTargetPicker();
+        });
+        
+        UI.outputDeviceSelect.replaceWith(button);
+        UI.sinkIdStatus.textContent = 'AirPlay対応ブラウザ';
+        
+        // AirPlayイベントリスナー設定
+        audioElement.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
+            console.log('AirPlay availability changed:', e);
+            if (e.availability === 'available') {
+                UI.sinkIdStatus.textContent = '✓ AirPlayデバイスが利用可能です';
+            } else if (e.availability === 'unavailable') {
+                UI.sinkIdStatus.textContent = 'AirPlayデバイスが利用できません';
+            }
+        });
+        
+        audioElement.addEventListener('webkitcurrentplaybacktargetischanged', (e) => {
+            console.log('AirPlay target changed:', e);
+            UI.sinkIdStatus.textContent = '出力デバイスを切り替えました';
+        });
+    } else {
+        UI.sinkIdStatus.textContent = 'AirPlayがサポートされていません';
+    }
+}
+
 async function changeOutputDevice() {
     if (!audioContext) return;
 
     const deviceId = UI.outputDeviceSelect.value;
+    const isWebKit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    
+    // WebKitの場合はAirPlayピッカーで処理されるため、ここでは何もしない
+    if (isWebKit) {
+        return;
+    }
     
     try {
         if (typeof audioContext.setSinkId !== 'function') {

@@ -107,10 +107,9 @@ class BeamformingProcessor extends AudioWorkletProcessor {
           processed = [(leftChannel[i] + rightChannel[i]) / 2, 0];
           break;
       }
-      // モノラル出力を両チャンネルに出力
-      const outputSample = Math.max(-1, Math.min(1, processed[0]));
-      outLeftChannel[i] = outputSample;
-      outRightChannel[i] = outputSample;
+      // ステレオ出力を各チャンネルに割り当て
+      outLeftChannel[i] = Math.max(-1, Math.min(1, processed[0]));
+      outRightChannel[i] = Math.max(-1, Math.min(1, processed[1]));
     }
     return true;
   }

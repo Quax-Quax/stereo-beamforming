@@ -104,7 +104,7 @@ class BeamformingProcessor extends AudioWorkletProcessor {
           break;
         case 'passthrough':
         default:
-          processed = (leftChannel[i], rightChannel[i]) ;
+          processed = [leftChannel[i], rightChannel[i]];
           break;
       }
       // ステレオ出力を各チャンネルに割り当て
